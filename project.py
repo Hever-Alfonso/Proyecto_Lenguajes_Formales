@@ -93,3 +93,31 @@ def calculate_first_sets(grammar):
                         first[A] |= temp
                         changed = True
     return first
+
+# --- STEP 4: Compute FOLLOW sets ---
+def calculate_follow_sets(grammar, first, start):
+    """
+    Compute follow[NT] = terminals that can come after NT.
+    start gets '$'. Uses first{} and follow{} iteratively.
+    """
+    follow = {A: set() for A in grammar}
+    follow[start].add('$')
+    changed = True
+    while changed:
+        changed = False
+        for A, prods in grammar.items():
+            for prod in prods:
+                for i, B in enumerate(prod):
+                    if B in grammar:  # B is a nonterminal
+                        beta = prod[i+1:]
+                        before = len(follow[B])
+                        if beta:
+                            fb = first_of_string(beta, first)
+                            follow[B] |= (fb - {'e'})
+                            if 'e' in fb:
+                                follow[B] |= follow[A]
+                        else:
+                            follow[B] |= follow[A]
+                        if len(follow[B]) > before:
+                            changed = True
+    return follow
