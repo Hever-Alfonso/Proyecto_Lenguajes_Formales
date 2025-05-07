@@ -33,3 +33,19 @@ def read_grammar():
         raw.setdefault(nt, []).extend(alts)
         count += 1
     return raw
+
+# --- STEP 2: Convert those string alternatives into lists of symbols ---
+def convert_to_productions(raw):
+    """
+    Change raw grammar: for each NT and each alt-string,
+    turn alt 'abc' into ['a','b','c'], and 'e' into ['e'] for epsilon.
+    """
+    grammar = {}
+    for A, alts in raw.items():
+        grammar[A] = []
+        for alt in alts:
+            if alt == 'e':
+                grammar[A].append(['e'])
+            else:
+                grammar[A].append(list(alt))
+    return grammar
