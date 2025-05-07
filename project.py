@@ -49,3 +49,47 @@ def convert_to_productions(raw):
             else:
                 grammar[A].append(list(alt))
     return grammar
+
+# --- STEP 3: Compute FIRST sets ---
+def first_of_string(alpha, first):
+    """
+    Given a list of symbols alpha and precomputed first{},
+    compute FIRST(alpha) = terminals that can start alpha, or 'e'.
+    """
+    result = set()
+    for X in alpha:
+        # if X is terminal (not in first), just return that
+        if X not in first:
+            result.add(X)
+            return result
+        # else X is NT: add FIRST(X) minus epsilon
+        result |= (first[X] - {'e'})
+        if 'e' not in first[X]:
+            return result
+    # all symbols can vanish -> epsilon
+    result.add('e')
+    return result
+
+
+def calculate_first_sets(grammar):
+    """
+    Iteratively fill first[NT] for every nonterminal NT
+    until no changes happen. Handles epsilon.
+    """
+    first = {A: set() for A in grammar}
+    changed = True
+    while changed:
+        changed = False
+        for A, prods in grammar.items():
+            for prod in prods:
+                if prod == ['e']:
+                    # NT -> epsilon
+                    if 'e' not in first[A]:
+                        first[A].add('e')
+                        changed = True
+                else:
+                    temp = first_of_string(prod, first)
+                    if not temp.issubset(first[A]):
+                        first[A] |= temp
+                        changed = True
+    return first
