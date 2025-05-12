@@ -121,3 +121,36 @@ def calculate_follow_sets(grammar, first, start):
                         if len(follow[B]) > before:
                             changed = True
     return follow
+
+# --- STEP 5: LL(1) Stuff ---
+def check_ll1(grammar, first, follow):
+    """
+    Check pairwise that FIRST(prodi) disjoint from FIRST(prodj),
+    and if epsilon in FIRST, its FIRST intersect FOLLOW is empty.
+    """
+    for A, prods in grammar.items():
+        for i in range(len(prods)):
+            f_i = first_of_string(prods[i], first)
+            for j in range(i+1, len(prods)):
+                f_j = first_of_string(prods[j], first)
+                if f_i & f_j:
+                    return False
+            if 'e' in f_i and (f_i & follow[A]):
+                return False
+    return True
+
+
+def build_ll1_table(grammar, first, follow):
+    """
+    Build table[A][a] = which production to use when seeing a.
+    """
+    table = {A: {} for A in grammar}
+    for A, prods in grammar.items():
+        for prod in prods:
+            fp = first_of_string(prod, first)
+            for a in (fp - {'e'}):
+                table[A][a] = prod
+            if 'e' in fp:
+                for b in follow[A]:
+                    table[A][b] = prod
+    return table
