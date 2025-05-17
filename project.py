@@ -154,3 +154,28 @@ def build_ll1_table(grammar, first, follow):
                 for b in follow[A]:
                     table[A][b] = prod
     return table
+
+# --- STEP 6: LL(1) Predictive Parser ---
+def predictive_parse(table, s, start):
+    """
+    Simulate LL(1) parse: push start, compare stack vs input,
+    apply productions from table, return True/False.
+    """
+    stack = [start, '$']
+    inp = list(s) + ['$']
+    ip = 0
+    while stack:
+        top = stack.pop(0)
+        cur = inp[ip]
+        if top == cur == '$':
+            return True
+        if top == cur:
+            ip += 1
+        elif top in table and cur in table[top]:
+            prod = table[top][cur]
+            if prod != ['e']:
+                for sym in reversed(prod):
+                    stack.insert(0, sym)
+        else:
+            return False
+    return False
