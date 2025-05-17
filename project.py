@@ -179,3 +179,49 @@ def predictive_parse(table, s, start):
         else:
             return False
     return False
+
+# --- STEP 7: SLR(1) closure & states ---
+def calculate_closure(items, grammar):
+    """
+    Given a set of LR(0) items, add new ones for nonterminals
+    after the dot until no more appear. Return closure.
+    """
+    closure = set(items)
+    changed = True
+    while changed:
+        changed = False
+        new = set(closure)
+        for (A, prod, i) in closure:
+            if i < len(prod) and prod[i] in grammar:
+                for beta in grammar[prod[i]]:
+                    item = (prod[i], tuple(beta), 0)
+                    if item not in new:
+                        new.add(item)
+                        changed = True
+        closure = new
+    return closure
+
+
+def calculate_canonical_lr0(grammar, start):
+    """
+    Build the list of all LR(0) states and transitions between them.
+    """
+    init = (start, tuple(grammar[start][0]), 0)
+    states = [calculate_closure({init}, grammar)]
+    trans = {}
+    idx_map = {tuple(states[0]): 0}
+    changed = True
+    while changed:
+        changed = False
+        for i, I in enumerate(list(states)):
+            symbols = {prod[pos] for (A, prod, pos) in I if pos < len(prod)}
+            for X in symbols:
+                moved = {(A, prod, pos+1) for (A, prod, pos) in I if pos < len(prod) and prod[pos] == X}
+                J = calculate_closure(moved, grammar)
+                tJ = tuple(J)
+                if tJ not in idx_map:
+                    idx_map[tJ] = len(states)
+                    states.append(J)
+                    changed = True
+                trans[(i, X)] = idx_map[tJ]
+    return states, trans
