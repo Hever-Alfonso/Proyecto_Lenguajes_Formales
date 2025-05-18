@@ -281,3 +281,117 @@ def lr_parse(s, slr_table, productions):
                 return True
         else:
             return False
+        
+# --- MAIN: put it all together ---
+def main():
+    # 1) Read grammar and remember original nonterminals
+    raw = read_grammar()
+    original_NTs = list(raw.keys())
+    grammar = convert_to_productions(raw)
+
+    # 2) Quick productivity check (optional, omitted here)
+    def productive_nts(grammar):
+        productive = set()
+        # Base: any NT that has a production of only terminals or 'e'
+        for A, alts in grammar.items():
+            for prod in alts:
+                if all(sym not in grammar or sym == 'e' for sym in prod):
+                    productive.add(A)
+                    break
+        # Iterate until no more NTs can be added
+        changed = True
+        while changed:
+            changed = False
+            for A, alts in grammar.items():
+                if A in productive:
+                    continue
+                for prod in alts:
+                    if all((sym not in grammar) or (sym in productive) for sym in prod):
+                        productive.add(A)
+                        changed = True
+                        break
+        return productive
+
+    start = next(iter(grammar))
+    if start not in productive_nts(grammar):
+        print("Grammar is neither LL(1) nor SLR(1).")
+        return
+
+    # 3) Augment grammar and compute FIRST/FOLLOW
+    aug = start + "'"
+    grammar = {aug: [[start]], **grammar}
+    first = calculate_first_sets(grammar)
+    follow = calculate_follow_sets(grammar, first, aug)
+
+    # 4) Determine which parser(s) apply
+    is_ll1 = check_ll1(grammar, first, follow)
+    if is_ll1:
+        ll1_table = build_ll1_table(grammar, first, follow)
+
+    states, trans = calculate_canonical_lr0(grammar, aug)
+    slr_res = construct_slr_table(states, trans, grammar, follow, aug)
+    is_slr1 = slr_res is not None
+    if is_slr1:
+        slr_table, slr_prods = slr_res
+
+    # 5) Dispatch to the correct parsing mode
+    # Case: neither LL(1) nor SLR(1)
+    if not is_ll1 and not is_slr1:
+        print("Grammar is neither LL(1) nor SLR(1).")
+        return
+
+    # Case: only LL(1)
+    if is_ll1 and not is_slr1:
+        print("Grammar is LL(1).")
+        tests = []
+        while True:
+            s = input().strip()
+            if not s:
+                break
+            tests.append(s)
+        for s in tests:
+            print("yes" if predictive_parse(ll1_table, s, aug) else "no")
+        return
+
+    # Case: only SLR(1)
+    if is_slr1 and not is_ll1:
+        print("Grammar is SLR(1).")
+        tests = []
+        while True:
+            s = input().strip()
+            if not s:
+                break
+            tests.append(s)
+        for s in tests:
+            print("yes" if lr_parse(s, slr_table, slr_prods) else "no")
+        return
+
+    # Case: both LL(1) and SLR(1) available
+    while True:
+        print("Select a parser (T: for LL(1), B: for SLR(1), Q: quit):")
+        choice = input().strip().upper()
+        if choice == 'Q':
+            break
+        if choice == 'T':
+            tests = []
+            while True:
+                s = input().strip()
+                if not s:
+                    break
+                tests.append(s)
+            for s in tests:
+                print("yes" if predictive_parse(ll1_table, s, aug) else "no")
+        elif choice == 'B':
+            tests = []
+            while True:
+                s = input().strip()
+                if not s:
+                    break
+                tests.append(s)
+            for s in tests:
+                print("yes" if lr_parse(s, slr_table, slr_prods) else "no")
+        else:
+            print("Invalid choice, try T, B, or Q.")
+
+if __name__ == '__main__':
+    main()
