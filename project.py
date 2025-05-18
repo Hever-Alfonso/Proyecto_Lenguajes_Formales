@@ -225,3 +225,59 @@ def calculate_canonical_lr0(grammar, start):
                     changed = True
                 trans[(i, X)] = idx_map[tJ]
     return states, trans
+
+# --- STEP 8: Construct SLR(1) table ---
+def construct_slr_table(states, trans, grammar, follow, start):
+    """
+    Build ACTION/GO TO table: shift, reduce, accept.
+    Returns table and production list for reduce mapping.
+    """
+    prods = []
+    pidx = {}
+    cnt = 0
+    for A, alts in grammar.items():
+        for beta in alts:
+            prods.append((A, tuple(beta)))
+            pidx[(A, tuple(beta))] = cnt
+            cnt += 1
+    table = [{} for _ in states]
+    for i, I in enumerate(states):
+        for (A, prod, pos) in I:
+            if pos < len(prod):
+                a = prod[pos]
+                if (i, a) in trans:
+                    table[i][a] = ('shift', trans[(i, a)])
+            else:
+                if A == start:
+                    table[i]['$'] = ('accept',)
+                else:
+                    ridx = pidx[(A, prod)]
+                    for a in follow[A]:
+                        table[i][a] = ('reduce', ridx)
+    return table, prods
+
+# --- STEP 9: SLR(1) Parser simulation ---
+def lr_parse(s, slr_table, productions):
+    """
+    Simulate SLR(1): use stack of states, read input, shift/reduce.
+    Return True if accept state reached.
+    """
+    stack = [0]
+    inp = list(s) + ['$']
+    ip = 0
+    while True:
+        state = stack[-1]
+        a = inp[ip]
+        if a in slr_table[state]:
+            act = slr_table[state][a]
+            if act[0] == 'shift':
+                stack.append(act[1]); ip += 1
+            elif act[0] == 'reduce':
+                A, beta = productions[act[1]]
+                for _ in beta: stack.pop()
+                t = stack[-1]
+                stack.append(slr_table[t][A][1])
+            elif act[0] == 'accept':
+                return True
+        else:
+            return False
